@@ -1,0 +1,14 @@
+{
+  "name": "quda-electron",
+  "version": "0.1.7",
+  "private": true,
+  "main": "src/electron.js",
+  "scripts": {
+    "e:electron": "webpack-dev-server --config webpack.config.electron.dev.js --mode development --hot --progress --color --port 7777"
+  },
+  "devDependencies": {
+    "webpack": "^4.44.2",
+    "webpack-cli": "^3.3.12",
+    "webpack-dev-server": "^3.11.0"
+  }
+}

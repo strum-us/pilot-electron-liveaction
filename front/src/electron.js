@@ -324,8 +324,7 @@ function createMainWindow(callback, showOps = false) {
 
   mainWindow.webContents.on('did-finish-load', () => {
     if (!isPackaged) {
-      initAutoUpdater()
-
+      // initAutoUpdater()
       return
     }
     initAutoUpdater()
