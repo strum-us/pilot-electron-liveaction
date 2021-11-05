@@ -16,7 +16,8 @@ module.exports = {
   mode: 'development',
   entry: {
     app: '../src/.entrypoint/app/index.tsx',
-    // capture: '../src/.entrypoint/capture/index.tsx',
+    capture: '../src/.entrypoint/capture/index.tsx',
+    temp: '../src/.entrypoint/temp/index.tsx',
     // tray: '../src/.entrypoint/tray/index.tsx',
     // record: '../src/.entrypoint/record/index.tsx',
   },
@@ -147,11 +148,16 @@ module.exports = {
       template: '../src/assets/app.html',
       chunks: ['app'],
     }),
-    // new HtmlWebpackPlugin({
-    //   filename: 'capture.html',
-    //   template: '../src/assets/capture.html',
-    //   chunks: ['capture'],
-    // }),
+    new HtmlWebpackPlugin({
+      filename: 'capture.html',
+      template: '../src/assets/capture.html',
+      chunks: ['capture'],
+    }),
+    new HtmlWebpackPlugin({
+      filename: 'temp.html',
+      template: '../src/assets/temp.html',
+      chunks: ['temp'],
+    }),
     // new HtmlWebpackPlugin({
     //   filename: 'record.html',
     //   template: '../src/assets/record.html',

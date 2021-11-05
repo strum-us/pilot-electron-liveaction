@@ -1,5 +1,5 @@
 // src/electron.js
-const { shell, screen, app, BrowserWindow, globalShortcut, ipcMain, Tray, systemPreferences } = require('electron')
+const { shell, screen, app, BrowserWindow, globalShortcut, nativeImage, ipcMain, Tray, systemPreferences } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const log = require('electron-log')
 const path = require('path')
@@ -382,11 +382,6 @@ ipcMain.on('open-router', (event, args) => {
   }
 })
 
-ipcMain.on('cursor-update', (event, args) => {
-  ElectronLog.info({ args })
-  tempWindow1.webContents.send('cursor-updated', { ...args })
-})
-
 ipcMain.on('open-tray-router', (event, args) => {
   const { path, options } = args
 
@@ -509,119 +504,74 @@ const captureScreen = (type) => {
   }
 
   const screenIds = {}
-  const mousePos = screen.getCursorScreenPoint()
-  const currentDisplay = screen.getDisplayNearestPoint(mousePos)
   const displays = screen.getAllDisplays()
-  console.log({ currentDisplay, displays })
+  captureWins = displays.map((display) => {
+    const captureWin = new BrowserWindow({
+      // window fullscreen
+      fullscreen: os.platform() === 'win32' || undefined,
+      width: display.bounds.width,
+      height: display.bounds.height,
+      x: display.bounds.x,
+      y: display.bounds.y,
+      transparent: true,
+      frame: false,
+      // skipTaskbar: true,
+      // autoHideMenuBar: true,
+      movable: false,
+      resizable: false,
+      enableLargerThanScreen: true,
+      hasShadow: false,
+      webPreferences: {
+        webSecurity: false,
+        nodeIntegration: true,
+        enableRemoteModule: true,
+        contextIsolation: false,
+      },
+    })
+    screenIds[captureWin.id] = display.id
+    ElectronLog.info(screenIds)
 
-  const fullWindow = new BrowserWindow({
-    // window fullscreen
-    fullscreen: os.platform() === 'win32' || undefined,
-    width: currentDisplay.bounds.width,
-    height: currentDisplay.bounds.height,
-    x: currentDisplay.bounds.x,
-    y: currentDisplay.bounds.y,
-    transparent: true,
-    frame: false,
-    // skipTaskbar: true,
-    // autoHideMenuBar: true,
-    movable: false,
-    resizable: false,
-    enableLargerThanScreen: true,
-    hasShadow: false,
-    webPreferences: {
-      webSecurity: false,
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false,
-    },
-    alwaysOnTop: true,
+    captureWin.setAlwaysOnTop(true, 'screen-saver')
+
+    captureWin.setVisibleOnAllWorkspaces(true)
+    captureWin.setFullScreenable(false)
+
+    // if (!isPackaged) {
+    //   captureWin.webContents.openDevTools()
+    // }
+
+    const fileName = type === 'capture' ? 'capture.html' : 'record.html'
+    ElectronLog.info({ fileName })
+    if (isPackaged) {
+      captureWin.loadURL(url.format({
+        pathname: path.join(__dirname, `../app-build/${fileName}`),
+        protocol: 'file:',
+        slashes: true,
+      }))
+    } else {
+      captureWin.loadURL(`${DEV_HOST}/${fileName}`)
+    }
+
+    const { x, y } = screen.getCursorScreenPoint()
+    if (x >= display.bounds.x && x <= display.bounds.x + display.bounds.width && y >= display.bounds.y && y <= display.bounds.y + display.bounds.height) {
+      captureWin.focus()
+    } else {
+      captureWin.blur()
+    }
+
+    captureWin.on('closed', () => {
+      const index = captureWins.indexOf(captureWin)
+      if (index !== -1) {
+        captureWins.splice(index, 1)
+      }
+      captureWins.forEach((win) => win.close())
+      captureWins = []
+    })
+
+    return captureWin
   })
 
-  const fileName = 'capture.html'
-  ElectronLog.info({ fileName })
-  if (isPackaged) {
-    fullWindow.loadURL(url.format({
-      pathname: path.join(__dirname, `../app-build/${fileName}`),
-      protocol: 'file:',
-      slashes: true,
-    }))
-  } else {
-    fullWindow.loadURL(`${DEV_HOST}/${fileName}`)
-  }
-
-  captureWins = [
-    fullWindow,
-  ]
-
-  // captureWins = displays.map((display) => {
-  //   const captureWin = new BrowserWindow({
-  //     // window fullscreen
-  //     fullscreen: os.platform() === 'win32' || undefined,
-  //     width: display.bounds.width,
-  //     height: display.bounds.height,
-  //     x: display.bounds.x,
-  //     y: display.bounds.y,
-  //     transparent: true,
-  //     frame: false,
-  //     // skipTaskbar: true,
-  //     // autoHideMenuBar: true,
-  //     movable: false,
-  //     resizable: false,
-  //     enableLargerThanScreen: true,
-  //     hasShadow: false,
-  //     webPreferences: {
-  //       webSecurity: false,
-  //       nodeIntegration: true,
-  //       enableRemoteModule: true,
-  //       contextIsolation: false,
-  //     },
-  //   })
-  //   screenIds[captureWin.id] = display.id
-  //   ElectronLog.info(screenIds)
-
-  //   // captureWin.setAlwaysOnTop(true, 'screen-saver')
-
-  //   captureWin.setVisibleOnAllWorkspaces(true)
-  //   captureWin.setFullScreenable(false)
-
-  //   // if (!isPackaged) {
-  //   //   captureWin.webContents.openDevTools()
-  //   // }
-
-  //   // const fileName = type === 'capture' ? 'capture.html' : 'record.html'
-  //   const fileName = 'capture.html'
-  //   ElectronLog.info({ fileName })
-  //   if (isPackaged) {
-  //     captureWin.loadURL(url.format({
-  //       pathname: path.join(__dirname, `../app-build/${fileName}`),
-  //       protocol: 'file:',
-  //       slashes: true,
-  //     }))
-  //   } else {
-  //     captureWin.loadURL(`${DEV_HOST}/${fileName}`)
-  //   }
-
-  //   const { x, y } = screen.getCursorScreenPoint()
-  //   if (x >= display.bounds.x && x <= display.bounds.x + display.bounds.width && y >= display.bounds.y && y <= display.bounds.y + display.bounds.height) {
-  //     captureWin.focus()
-  //   } else {
-  //     captureWin.blur()
-  //   }
-
-  //   captureWin.on('closed', () => {
-  //     const index = captureWins.indexOf(captureWin)
-  //     if (index !== -1) {
-  //       captureWins.splice(index, 1)
-  //     }
-  //     captureWins.forEach((win) => win.close())
-  //     captureWins = []
-  //   })
-
-  //   return captureWin
-  // })
-
-  // global.screenIds = JSON.stringify(screenIds)
+  global.screenIds = JSON.stringify(screenIds)
 }
 
 ipcMain.on('close-capture-windows', (e) => {
@@ -673,10 +623,6 @@ const captureInit = () => {
     // ElectronLog.info('global.login', global.login)
     // if (!global.login) return
     captureScreen('record')
-
-    // setTimeout(() => {
-    //   createTempWindow()
-    // }, 2000)
   })
 
   ipcMain.on('capture-screen', (e, { type = 'start', screenId } = {}) => {
@@ -742,7 +688,6 @@ function showBrowserWindow(windowName, showOps = true, callback = () => {}) {
 app.on('activate', async () => {
   showBrowserWindow('main', false)
   showBrowserWindow('tray')
-
   // if (trayWindow === null) {
   //   setTimeout(() => {
   //     createTrayWindow()
@@ -755,12 +700,9 @@ app.on('activate', async () => {
   }
 })
 
-let tempWindow1 = null
 app.on('ready', async () => {
   showBrowserWindow('main', false)
   showBrowserWindow('tray')
-
-  tempWindow1 = createTempWindow(() => {})
   // if (mainWindow === null) {
   //   createMainWindow()
   // }
@@ -801,55 +743,3 @@ app.whenReady().then(() => {
   captureInit()
   createTray()
 })
-
-function createTempWindow(callback) {
-  let tempWindow = new BrowserWindow({
-    width: 1000,
-    height: 680,
-    // transparent: true,
-    // frame: false,
-    movable: true,
-    resizable: true,
-    // enableLargerThanScreen: false,
-    hasShadow: true,
-    show: true,
-    webPreferences: {
-      nodeIntegration: true,
-      enableRemoteModule: true,
-      contextIsolation: false,
-      webSecurity: false,
-    },
-  })
-
-  // if (isMac) {
-  // tempWindow.setAlwaysOnTop(true, 'pop-up-menu')
-  // tempWindow.moveAbove()
-  // tempWindow.moveTop()
-  // }
-
-  ElectronLog.info({ isPackaged })
-  if (isPackaged) {
-    tempWindow.loadURL(url.format({
-      pathname: path.join(__dirname, '../app-build/temp.html'),
-      protocol: 'file:',
-      slashes: true,
-    }))
-  } else {
-    tempWindow.loadURL(DEV_HOST + '/temp.html')
-  }
-
-  tempWindow.on('closed', () => {
-    tempWindow = null
-  })
-
-  tempWindow.on('close', (e) => {
-    if (process.platform === 'darwin') {
-      if (!forceQuit) {
-        e.preventDefault()
-        app.hide()
-      }
-    }
-  })
-
-  return tempWindow
-}
