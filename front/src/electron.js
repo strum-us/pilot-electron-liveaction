@@ -385,6 +385,9 @@ ipcMain.on('open-router', (event, args) => {
 ipcMain.on('cursor-update', (event, args) => {
   ElectronLog.info({ args })
   tempWindow1.webContents.send('cursor-updated', { ...args })
+  captureWins?.forEach((win) => {
+    win.webContents.send('cursor-updated', { ...args })
+  })
 })
 
 ipcMain.on('open-tray-router', (event, args) => {
